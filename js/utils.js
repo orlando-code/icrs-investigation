@@ -97,6 +97,26 @@ export function formatDistance(km) {
   return `${Math.round(km).toLocaleString()} km`;
 }
 
+export function formatEmissions(kg, { compact = false } = {}) {
+  if (kg == null || Number.isNaN(kg)) return "—";
+  const value = Number(kg);
+  if (value === 0) return "0 kg";
+  if (compact) {
+    if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M kg`;
+    if (value >= 10_000) return `${(value / 1000).toFixed(0)} t`;
+    if (value >= 1000) return `${(value / 1000).toFixed(1)} t`;
+  }
+  if (value >= 1000) {
+    return `${value.toLocaleString(undefined, { maximumFractionDigits: 0 })} kg`;
+  }
+  return `${value.toLocaleString(undefined, { maximumFractionDigits: 1 })} kg`;
+}
+
+export function formatTonnes(kg) {
+  if (kg == null || Number.isNaN(kg)) return "—";
+  return `${(Number(kg) / 1000).toLocaleString(undefined, { maximumFractionDigits: 1 })} t CO₂e`;
+}
+
 export function speakerMatchesQuery(speaker, query) {
   const trimmed = query.trim().toLowerCase();
   if (!trimmed) return false;

@@ -1,6 +1,8 @@
 import { SITE_DATA } from "./locations.js";
+import { EMISSIONS_DATA } from "./emissions-data.js";
 import { createMapView } from "./map.js";
 import { createNetworkView } from "./network.js";
+import { createEmissionsView } from "./emissions-view.js";
 import { createShareView } from "./share.js";
 import { escapeHtml, formatDistance } from "./utils.js";
 
@@ -28,9 +30,11 @@ const els = {
   connectionsSizeToggle: $("connections-size-toggle"),
   mapPanel: $("map-panel"),
   networkPanel: $("network-panel"),
+  emissionsPanel: $("emissions-panel"),
   sharePanel: $("share-panel"),
   mapStage: $("map-stage"),
   networkStage: $("network-stage"),
+  emissionsStage: $("emissions-stage"),
   shareStage: $("share-stage"),
   mapContainer: $("map"),
   networkSvg: $("network-svg"),
@@ -59,8 +63,20 @@ const els = {
   sharePushBtn: $("share-push-btn"),
   shareCopyBtn: $("share-copy-btn"),
   shareStatus: $("share-status"),
+  emissionsHeadline: $("emissions-headline"),
+  emissionsModeBreakdown: $("emissions-mode-breakdown"),
+  emissionsLegend: $("emissions-legend"),
+  emissionsBarChart: $("emissions-bar-chart"),
+  emissionsResults: $("emissions-results"),
+  emissionsResultsTitle: $("emissions-results-title"),
+  emissionsAssumptions: $("emissions-assumptions"),
+  emissionsMap: $("emissions-map"),
+  emissionsHoverCard: $("emissions-hover-card"),
+  emissionsHoverAffiliation: $("emissions-hover-affiliation"),
+  emissionsHoverMeta: $("emissions-hover-meta"),
   tabButtons: [...document.querySelectorAll("[data-tab]")],
   networkModeButtons: [...document.querySelectorAll("[data-network-mode]")],
+  emissionsModeButtons: [...document.querySelectorAll("[data-emissions-mode]")],
 };
 
 function renderStats() {
@@ -163,6 +179,20 @@ const shareView = createShareView(SITE_DATA, {
   status: els.shareStatus,
 });
 
+const emissionsView = createEmissionsView(EMISSIONS_DATA, SITE_DATA, {
+  mapContainer: els.emissionsMap,
+  headline: els.emissionsHeadline,
+  modeBreakdown: els.emissionsModeBreakdown,
+  legend: els.emissionsLegend,
+  barChart: els.emissionsBarChart,
+  results: els.emissionsResults,
+  resultsTitle: els.emissionsResultsTitle,
+  assumptions: els.emissionsAssumptions,
+  hoverCard: els.emissionsHoverCard,
+  hoverAffiliation: els.emissionsHoverAffiliation,
+  hoverMeta: els.emissionsHoverMeta,
+});
+
 let activeTab = "map";
 
 function setTab(tab) {
@@ -172,14 +202,18 @@ function setTab(tab) {
   });
   els.mapPanel.hidden = tab !== "map";
   els.networkPanel.hidden = tab !== "network";
+  els.emissionsPanel.hidden = tab !== "emissions";
   els.sharePanel.hidden = tab !== "share";
   els.mapStage.hidden = tab !== "map";
   els.networkStage.hidden = tab !== "network";
+  els.emissionsStage.hidden = tab !== "emissions";
   els.shareStage.hidden = tab !== "share";
   if (tab === "map") {
     mapView.resize();
   } else if (tab === "network") {
     networkView.resize();
+  } else if (tab === "emissions") {
+    emissionsView.resize();
   } else if (tab === "share") {
     shareView.render();
   }
@@ -195,6 +229,15 @@ els.networkModeButtons.forEach((button) => {
       item.classList.toggle("active", item === button);
     });
     networkView.setMode(button.dataset.networkMode);
+  });
+});
+
+els.emissionsModeButtons.forEach((button) => {
+  button.addEventListener("click", () => {
+    els.emissionsModeButtons.forEach((item) => {
+      item.classList.toggle("active", item === button);
+    });
+    emissionsView.setRankMode(button.dataset.emissionsMode);
   });
 });
 
@@ -324,6 +367,7 @@ document.addEventListener("click", (event) => {
 window.addEventListener("resize", () => {
   if (activeTab === "map") mapView.resize();
   else if (activeTab === "network") networkView.resize();
+  else if (activeTab === "emissions") emissionsView.resize();
 });
 
 renderStats();

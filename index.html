@@ -28,6 +28,7 @@
       <nav class="tabs" aria-label="Views">
         <button type="button" class="tab active" data-tab="map">Map</button>
         <button type="button" class="tab" data-tab="network">Network</button>
+        <button type="button" class="tab" data-tab="emissions">Emissions</button>
         <button type="button" class="tab" data-tab="share">Share</button>
       </nav>
     </header>
@@ -135,6 +136,41 @@
         </aside>
       </aside>
 
+      <aside class="panel" id="emissions-panel" hidden>
+        <div class="panel-header">
+          <h2>Travel emissions</h2>
+          <p>Estimated return-trip CO₂e for speakers travelling to ICRS in Auckland.</p>
+        </div>
+
+        <div class="emissions-headline" id="emissions-headline"></div>
+        <div class="emissions-mode-breakdown" id="emissions-mode-breakdown"></div>
+
+        <div class="network-controls entry-form emissions-controls">
+          <div class="segmented">
+            <button type="button" class="segment active" data-emissions-mode="affiliation">
+              By affiliation
+            </button>
+            <button type="button" class="segment" data-emissions-mode="country">
+              By country
+            </button>
+          </div>
+        </div>
+
+        <div class="network-legend" id="emissions-legend"></div>
+
+        <div class="results-header">
+          <h3>Top emitters</h3>
+        </div>
+        <div class="results-wrap network-sidebar-scroll">
+          <div class="network-bar-chart" id="emissions-bar-chart"></div>
+          <div class="results-header">
+            <h3 id="emissions-results-title">Top affiliations by emissions</h3>
+          </div>
+          <div id="emissions-results"></div>
+          <div class="emissions-assumptions" id="emissions-assumptions"></div>
+        </div>
+      </aside>
+
       <aside class="panel" id="share-panel" hidden>
         <div class="panel-header">
           <h2>Share this map</h2>
@@ -181,6 +217,16 @@
           <button type="button" class="btn-ghost btn-small" id="network-clear-selection-mobile">Clear</button>
         </div>
         <svg id="network-svg" aria-label="Co-authorship network"></svg>
+      </section>
+
+      <section class="stage" id="emissions-stage" hidden>
+        <div class="stage-badge">Point size and colour show estimated travel CO₂e per affiliation</div>
+        <div id="emissions-map"></div>
+        <aside class="hover-card" id="emissions-hover-card" hidden>
+          <p class="hover-kicker">Affiliation emissions</p>
+          <h2 id="emissions-hover-affiliation"></h2>
+          <p id="emissions-hover-meta" class="hover-meta"></p>
+        </aside>
       </section>
 
       <section class="stage share-stage" id="share-stage" hidden>
