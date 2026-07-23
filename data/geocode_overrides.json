@@ -1,0 +1,32 @@
+{
+  "University of Miyazaki": {
+    "latitude": 31.8301,
+    "longitude": 131.4132,
+    "query_used": "override:University of Miyazaki, Japan"
+  },
+  "University of Hawai\u02bbi at Hilo": {
+    "latitude": 19.7,
+    "longitude": -155.0845,
+    "query_used": "override:University of Hawaii Hilo"
+  },
+  "University Of Mons, Belgium": {
+    "latitude": 50.464,
+    "longitude": 3.9551,
+    "query_used": "override:Universite de Mons, Belgium"
+  },
+  "University of Antsiranana": {
+    "latitude": -12.2834,
+    "longitude": 49.3077,
+    "query_used": "override:Universite d'Antsiranana, Madagascar"
+  },
+  "University of Salento": {
+    "latitude": 40.3586,
+    "longitude": 18.1655,
+    "query_used": "override:Universita del Salento, Italy"
+  },
+  "University of Toliara": {
+    "latitude": -23.3619,
+    "longitude": 43.6706,
+    "query_used": "override:Universite de Toliara, Madagascar"
+  }
+}

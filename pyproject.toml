@@ -1,0 +1,71 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "icrs-"
+version = "0.1.0"
+description = "Hierarchical Bayesian Beta Regression for Coral Cover Analysis"
+readme = "README.md"
+requires-python = ">=3.8"
+license = {text = "MIT"}
+authors = [
+    {name = "Orlando Timmerman"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Topic :: Scientific/Engineering",
+]
+dependencies = [
+    "numpy>=1.21.0",
+    "pandas>=1.3.0",
+    "geopandas>=0.10.0",
+    "matplotlib>=3.5.0",
+    "seaborn>=0.11.0",
+    "scipy>=1.7.0",
+    "scikit-learn>=1.0.0",
+    "statsmodels>=0.14.0",
+    "scikit-misc>=0.2.0",
+    "pymc>=5.0.0",
+    "arviz>=0.12.0",
+    "py7zr>=0.18.0",
+    "pyogrio>=0.1.0",
+    "rich>=13.0.0",
+    "pyworms>=0.1.0",
+    "pygbif>=0.6.0",
+    "geopy>=2.4.0",
+    "pycountry>=24.0.0",
+    "plotly>=5.0.0",
+    "cartopy>=0.22.0",
+    "h3>=4.0.0",
+    "requests>=2.31.0",
+]
+
+[project.optional-dependencies]
+ml = [
+    "xgboost>=1.5.0",
+]
+dev = [
+    "pytest>=7.0.0",
+    "black>=22.0.0",
+    "flake8>=4.0.0",
+    "mypy>=0.950",
+]
+
+[tool.setuptools]
+packages = ["src"]
+
+[tool.black]
+line-length = 100
+target-version = ['py38', 'py39', 'py310', 'py311']
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]

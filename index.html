@@ -1,0 +1,154 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>ICRS 2026 speaker affiliations</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Figtree:wght@400;500;600;700&family=Fraunces:opsz,wght@9..144,500;9..144,600&display=swap"
+      rel="stylesheet"
+    />
+    <link
+      href="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.css"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="css/styles.css" />
+  </head>
+  <body>
+    <header class="topbar">
+      <div class="brand">
+        <h1 id="site-title">ICRS 2026 speaker affiliations</h1>
+        <p id="site-summary">
+          Affiliation map centred on Auckland. Search by speaker or keyword in
+          talk titles and abstracts. Explore co-authorship in the network tab.
+        </p>
+      </div>
+      <nav class="tabs" aria-label="Views">
+        <button type="button" class="tab active" data-tab="map">Map</button>
+        <button type="button" class="tab" data-tab="network">Network</button>
+      </nav>
+    </header>
+
+    <main class="layout">
+      <aside class="panel" id="map-panel">
+        <div class="panel-header">
+          <h2>Search</h2>
+          <p>Match speaker names, affiliations, talk titles, or abstract text.</p>
+        </div>
+
+        <form class="entry-form" id="search-form" autocomplete="off">
+          <div class="field search-wrap">
+            <label for="search-query">Speaker or keyword</label>
+            <input
+              id="search-query"
+              name="query"
+              placeholder="e.g. Heron, coral restoration, bleaching"
+            />
+            <div id="search-suggestions" class="suggestions" role="listbox"></div>
+          </div>
+          <div class="toggle-stack">
+            <label class="toggle-field">
+              <input type="checkbox" id="connections-size-toggle" />
+              <span>Size points by co-authorship connections</span>
+            </label>
+            <label class="toggle-field">
+              <input type="checkbox" id="distance-toggle" />
+              <span>Show distance and route to ICRS</span>
+            </label>
+          </div>
+          <div class="form-actions">
+            <button class="btn-primary" type="submit">Search</button>
+            <button class="btn-ghost" type="button" id="btn-clear-search">Clear</button>
+          </div>
+          <div id="search-status" class="status" aria-live="polite"></div>
+        </form>
+
+        <div class="stats-card" id="stats-card"></div>
+
+        <div class="network-legend" id="map-legend"></div>
+
+        <div class="results-header">
+          <h3 id="results-title">All locations</h3>
+        </div>
+        <div class="results-wrap" id="results-list"></div>
+      </aside>
+
+      <aside class="panel" id="network-panel" hidden>
+        <div class="panel-header">
+          <h2>Co-authorship network</h2>
+          <p>Connections where speakers shared authorship on ICRS talks.</p>
+        </div>
+
+        <div class="entry-form network-controls">
+          <div class="field search-wrap">
+            <label for="network-search-query">Search network</label>
+            <input
+              id="network-search-query"
+              placeholder="e.g. Miguel Mies, James Cook University"
+            />
+            <div id="network-suggestions" class="suggestions" role="listbox"></div>
+          </div>
+          <div class="form-actions">
+            <button type="button" class="btn-primary" id="network-search-btn">Search</button>
+            <button type="button" class="btn-ghost" id="network-clear-search">Clear</button>
+          </div>
+          <div class="network-controls-row">
+            <div class="segmented">
+              <button type="button" class="segment active" data-network-mode="individual">
+                By individual
+              </button>
+              <button type="button" class="segment" data-network-mode="affiliation">
+                By affiliation
+              </button>
+            </div>
+            <button type="button" class="btn-ghost btn-small" id="network-reset-zoom">Reset zoom</button>
+          </div>
+          <p id="network-summary" class="status"></p>
+          <p id="network-search-status" class="status" aria-live="polite"></p>
+        </div>
+
+        <div class="network-legend" id="network-legend"></div>
+
+        <div class="results-header">
+          <h3>Top connections</h3>
+        </div>
+        <div class="results-wrap network-sidebar-scroll">
+          <div class="network-bar-chart" id="network-bar-chart"></div>
+          <div class="results-header">
+            <h3 id="network-results-title">Search matches</h3>
+          </div>
+          <div id="network-results"></div>
+        </div>
+
+        <aside class="network-side-card" id="network-card" hidden>
+          <p class="hover-kicker">Selected node</p>
+          <h2 id="network-card-title"></h2>
+          <p id="network-card-meta" class="hover-meta"></p>
+        </aside>
+      </aside>
+
+      <section class="stage" id="map-stage">
+        <div class="stage-badge" id="stage-badge">Hover a point for speakers</div>
+        <div id="map"></div>
+        <div id="line-tooltip" class="line-tooltip" hidden></div>
+        <aside class="hover-card" id="hover-card" hidden>
+          <p class="hover-kicker">Affiliation</p>
+          <h2 id="hover-affiliation"></h2>
+          <p id="hover-meta" class="hover-meta"></p>
+          <ul id="hover-speakers" class="speaker-list"></ul>
+        </aside>
+      </section>
+
+      <section class="stage network-stage" id="network-stage" hidden>
+        <div class="stage-badge">Scroll to zoom · drag background to pan · drag nodes to rearrange</div>
+        <svg id="network-svg" aria-label="Co-authorship network"></svg>
+      </section>
+    </main>
+
+    <script src="https://unpkg.com/maplibre-gl@5.6.0/dist/maplibre-gl.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/d3@7"></script>
+    <script type="module" src="js/app.js"></script>
+  </body>
+</html>
