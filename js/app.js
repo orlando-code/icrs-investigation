@@ -1,6 +1,7 @@
 import { SITE_DATA } from "./locations.js";
 import { createMapView } from "./map.js";
 import { createNetworkView } from "./network.js";
+import { createShareView } from "./share.js";
 import { escapeHtml, formatDistance } from "./utils.js";
 
 const locations = SITE_DATA.locations;
@@ -27,8 +28,10 @@ const els = {
   connectionsSizeToggle: $("connections-size-toggle"),
   mapPanel: $("map-panel"),
   networkPanel: $("network-panel"),
+  sharePanel: $("share-panel"),
   mapStage: $("map-stage"),
   networkStage: $("network-stage"),
+  shareStage: $("share-stage"),
   mapContainer: $("map"),
   networkSvg: $("network-svg"),
   lineTooltip: $("line-tooltip"),
@@ -46,6 +49,12 @@ const els = {
   networkBarChart: $("network-bar-chart"),
   networkResults: $("network-results"),
   networkResultsTitle: $("network-results-title"),
+  shareQr: $("share-qr"),
+  shareUrl: $("share-url"),
+  shareUrlInput: $("share-url-input"),
+  sharePushBtn: $("share-push-btn"),
+  shareCopyBtn: $("share-copy-btn"),
+  shareStatus: $("share-status"),
   tabButtons: [...document.querySelectorAll("[data-tab]")],
   networkModeButtons: [...document.querySelectorAll("[data-network-mode]")],
 };
@@ -137,6 +146,15 @@ const networkView = createNetworkView(SITE_DATA, {
   searchStatus: els.networkSearchStatus,
 });
 
+const shareView = createShareView(SITE_DATA, {
+  qrCanvas: els.shareQr,
+  url: els.shareUrl,
+  urlInput: els.shareUrlInput,
+  pushBtn: els.sharePushBtn,
+  copyBtn: els.shareCopyBtn,
+  status: els.shareStatus,
+});
+
 let activeTab = "map";
 
 function setTab(tab) {
@@ -146,12 +164,16 @@ function setTab(tab) {
   });
   els.mapPanel.hidden = tab !== "map";
   els.networkPanel.hidden = tab !== "network";
+  els.sharePanel.hidden = tab !== "share";
   els.mapStage.hidden = tab !== "map";
   els.networkStage.hidden = tab !== "network";
+  els.shareStage.hidden = tab !== "share";
   if (tab === "map") {
     mapView.resize();
-  } else {
+  } else if (tab === "network") {
     networkView.resize();
+  } else if (tab === "share") {
+    shareView.render();
   }
 }
 
@@ -293,7 +315,7 @@ document.addEventListener("click", (event) => {
 
 window.addEventListener("resize", () => {
   if (activeTab === "map") mapView.resize();
-  else networkView.resize();
+  else if (activeTab === "network") networkView.resize();
 });
 
 renderStats();

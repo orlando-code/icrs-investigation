@@ -28,6 +28,7 @@
       <nav class="tabs" aria-label="Views">
         <button type="button" class="tab active" data-tab="map">Map</button>
         <button type="button" class="tab" data-tab="network">Network</button>
+        <button type="button" class="tab" data-tab="share">Share</button>
       </nav>
     </header>
 
@@ -129,6 +130,30 @@
         </aside>
       </aside>
 
+      <aside class="panel" id="share-panel" hidden>
+        <div class="panel-header">
+          <h2>Share this map</h2>
+          <p>Scan the QR code or push the link to another device.</p>
+        </div>
+
+        <div class="entry-form share-controls">
+          <label class="field" for="share-url-input">Link</label>
+          <input id="share-url-input" class="share-url-input" readonly />
+          <p id="share-status" class="status" aria-live="polite"></p>
+          <div class="form-actions">
+            <button type="button" class="btn-primary" id="share-push-btn">Push / share</button>
+            <button type="button" class="btn-ghost" id="share-copy-btn">Copy link</button>
+          </div>
+        </div>
+
+        <div class="share-notes">
+          <p>
+            On mobile, <strong>Push / share</strong> opens your device share sheet (AirDrop,
+            Messages, email, etc.). On desktop, it copies the link instead.
+          </p>
+        </div>
+      </aside>
+
       <section class="stage" id="map-stage">
         <div class="stage-badge" id="stage-badge">Hover a point for speakers</div>
         <div id="map"></div>
@@ -144,6 +169,15 @@
       <section class="stage network-stage" id="network-stage" hidden>
         <div class="stage-badge">Scroll to zoom · drag background to pan · drag nodes to rearrange</div>
         <svg id="network-svg" aria-label="Co-authorship network"></svg>
+      </section>
+
+      <section class="stage share-stage" id="share-stage" hidden>
+        <div class="share-card">
+          <p class="hover-kicker">Scan to open</p>
+          <h2 class="share-title">ICRS 2026 affiliations</h2>
+          <canvas id="share-qr" width="280" height="280" aria-label="QR code for site URL"></canvas>
+          <p id="share-url" class="share-url"></p>
+        </div>
       </section>
     </main>
 

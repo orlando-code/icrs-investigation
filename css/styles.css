@@ -542,6 +542,72 @@ button:active {
   touch-action: none;
 }
 
+.share-stage {
+  display: grid;
+  place-items: center;
+  background:
+    radial-gradient(900px 500px at 50% 20%, rgba(31, 111, 139, 0.12) 0%, transparent 60%),
+    white;
+}
+
+.share-card {
+  text-align: center;
+  padding: 2rem 2.2rem 1.75rem;
+  border-radius: calc(var(--radius) + 4px);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  background: rgba(255, 255, 255, 0.96);
+  max-width: 22rem;
+}
+
+.share-title {
+  margin: 0.2rem 0 1rem;
+  font-family: var(--font-display);
+  font-size: 1.45rem;
+  font-weight: 560;
+}
+
+.share-card canvas {
+  display: block;
+  margin: 0 auto;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+}
+
+.share-url {
+  margin: 1rem 0 0;
+  font-size: 0.82rem;
+  color: var(--muted);
+  word-break: break-all;
+  line-height: 1.4;
+}
+
+.share-controls .field {
+  margin-bottom: 0;
+}
+
+.share-url-input {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 0.65rem 0.75rem;
+  font: inherit;
+  background: white;
+  color: var(--ink);
+}
+
+.share-notes {
+  padding: 0.85rem 1.1rem 1.1rem;
+  border-top: 1px solid var(--line);
+  font-size: 0.84rem;
+  color: var(--muted);
+  line-height: 1.45;
+}
+
+.share-notes p {
+  margin: 0;
+}
+
 .network-controls-row {
   display: flex;
   align-items: center;
