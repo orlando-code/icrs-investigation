@@ -21,14 +21,16 @@
       <div class="brand">
         <h1 id="site-title">ICRS 2026 speaker affiliations</h1>
         <p id="site-summary">
-          Affiliation map centred on Auckland. Search by speaker or keyword in
-          talk titles and abstracts. Explore co-authorship in the network tab.
+          Where's everyone from? Search by speaker or keyword (searches talk titles/abstracts). 
+        </p>
+        <p id="site-summary">
+          Explore travel-related emissions and connectivity of speakers in the relevant tabs.
         </p>
       </div>
       <nav class="tabs" aria-label="Views">
         <button type="button" class="tab active" data-tab="map">Map</button>
-        <button type="button" class="tab" data-tab="network">Network</button>
         <button type="button" class="tab" data-tab="emissions">Emissions</button>
+        <button type="button" class="tab" data-tab="network">Network</button>
         <button type="button" class="tab" data-tab="share">Share</button>
       </nav>
     </header>
@@ -53,7 +55,7 @@
           <div class="toggle-stack">
             <label class="toggle-field">
               <input type="checkbox" id="connections-size-toggle" />
-              <span>Size points by co-authorship connections</span>
+              <span>Size points by talks on author lists</span>
             </label>
             <label class="toggle-field">
               <input type="checkbox" id="distance-toggle" />
@@ -118,11 +120,7 @@
 
         <div class="network-legend" id="network-legend"></div>
 
-        <div class="results-header">
-          <h3>Top connections</h3>
-        </div>
         <div class="results-wrap network-sidebar-scroll">
-          <div class="network-bar-chart" id="network-bar-chart"></div>
           <div class="results-header">
             <h3 id="network-results-title">Search matches</h3>
           </div>
@@ -139,13 +137,18 @@
       <aside class="panel" id="emissions-panel" hidden>
         <div class="panel-header">
           <h2>Travel emissions</h2>
-          <p>Estimated return-trip CO₂e for speakers travelling to ICRS in Auckland.</p>
+          <p>Estimated return-trip CO₂e for speakers and delegates travelling to ICRS in Auckland.</p>
         </div>
 
         <div class="emissions-headline" id="emissions-headline"></div>
+        <div class="emissions-context" id="emissions-context"></div>
         <div class="emissions-mode-breakdown" id="emissions-mode-breakdown"></div>
 
         <div class="network-controls entry-form emissions-controls">
+          <label class="toggle-field emissions-delegate-toggle">
+            <input type="checkbox" id="include-non-speaking-delegates" />
+            Include non-speaking delegates
+          </label>
           <div class="segmented">
             <button type="button" class="segment active" data-emissions-mode="affiliation">
               By affiliation
@@ -195,11 +198,13 @@
         </div>
       </aside>
 
-      <section class="stage" id="map-stage">
-        <div class="stage-badge" id="stage-badge">Hover a point for speakers</div>
-        <div id="map"></div>
-        <div id="line-tooltip" class="line-tooltip" hidden></div>
-        <aside class="hover-card" id="hover-card" hidden>
+      <section class="stage stage-stack" id="map-stage">
+        <div class="stage-canvas">
+          <div class="stage-badge" id="stage-badge">Tap or click a point for information</div>
+          <div id="map"></div>
+          <div id="line-tooltip" class="line-tooltip" hidden></div>
+        </div>
+        <aside class="hover-card stage-detail-panel" id="hover-card" hidden>
           <p class="hover-kicker">Affiliation</p>
           <h2 id="hover-affiliation"></h2>
           <p id="hover-meta" class="hover-meta"></p>
@@ -207,22 +212,32 @@
         </aside>
       </section>
 
-      <section class="stage network-stage" id="network-stage" hidden>
-        <div class="stage-badge network-help-badge">Pinch to zoom · drag background to pan · tap a node to select</div>
-        <div id="network-selection-badge" class="network-selection-badge" hidden>
-          <div>
-            <p class="hover-kicker">Selected</p>
-            <strong id="network-selection-label"></strong>
+      <section class="stage network-stage stage-stack" id="network-stage" hidden>
+        <div class="stage-canvas network-stage-canvas">
+          <div class="stage-badge network-help-badge">pinch/scroll to zoom · drag to pan · tap/click a node to select</div>
+          <div id="network-selection-badge" class="network-selection-badge" hidden>
+            <div>
+              <p class="hover-kicker">Selected</p>
+              <strong id="network-selection-label"></strong>
+            </div>
+            <button type="button" class="btn-ghost btn-small" id="network-clear-selection-mobile">Clear</button>
           </div>
-          <button type="button" class="btn-ghost btn-small" id="network-clear-selection-mobile">Clear</button>
+          <svg id="network-svg" aria-label="Co-authorship network"></svg>
         </div>
-        <svg id="network-svg" aria-label="Co-authorship network"></svg>
+        <div class="network-stage-bars-wrap">
+          <div class="results-header network-stage-bars-header">
+            <h3>Most talks on author lists</h3>
+          </div>
+          <div class="network-stage-bars network-bar-chart" id="network-stage-bar-chart" aria-label="Top connections chart"></div>
+        </div>
       </section>
 
-      <section class="stage" id="emissions-stage" hidden>
-        <div class="stage-badge">Point size and colour show estimated travel CO₂e per affiliation</div>
-        <div id="emissions-map"></div>
-        <aside class="hover-card" id="emissions-hover-card" hidden>
+      <section class="stage stage-stack" id="emissions-stage" hidden>
+        <div class="stage-canvas">
+          <div class="stage-badge">Point size and colour show estimated travel CO₂e per affiliation</div>
+          <div id="emissions-map"></div>
+        </div>
+        <aside class="hover-card stage-detail-panel" id="emissions-hover-card" hidden>
           <p class="hover-kicker">Affiliation emissions</p>
           <h2 id="emissions-hover-affiliation"></h2>
           <p id="emissions-hover-meta" class="hover-meta"></p>

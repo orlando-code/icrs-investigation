@@ -519,6 +519,76 @@ button:active {
   color: var(--ink);
 }
 
+.emissions-context {
+  padding: 0.75rem 1.1rem 0.85rem;
+  border-bottom: 1px solid var(--line);
+  font-size: 0.82rem;
+  line-height: 1.45;
+  color: var(--muted);
+}
+
+.emissions-context h3 {
+  margin: 0 0 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.emissions-context-list {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.emissions-context-list li {
+  margin-bottom: 0.45rem;
+}
+
+.emissions-context-list li:last-child {
+  margin-bottom: 0;
+}
+
+.emissions-context-list strong {
+  color: var(--ink);
+}
+
+.emissions-context a,
+.emissions-sources a {
+  color: var(--sea);
+  font-weight: 600;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}
+
+.emissions-sources {
+  margin-top: 0.85rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid var(--line);
+}
+
+.emissions-sources h3 {
+  margin: 0 0 0.45rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.emissions-sources ul {
+  margin: 0;
+  padding-left: 1.1rem;
+}
+
+.emissions-sources li {
+  margin-bottom: 0.35rem;
+}
+
+.emissions-sources span {
+  color: var(--muted);
+}
+
 .emissions-mode-breakdown {
   padding: 0.75rem 1.1rem;
   border-bottom: 1px solid var(--line);
@@ -547,6 +617,10 @@ button:active {
 
 .emissions-controls {
   border-bottom: 1px solid var(--line);
+}
+
+.emissions-delegate-toggle {
+  margin-bottom: 0.65rem;
 }
 
 .emissions-country-fill {
@@ -638,10 +712,82 @@ button:active {
   height: 100%;
 }
 
-.network-stage {
+.stage-stack {
+  display: flex;
+  flex-direction: column;
+  background: transparent;
+  border: 0;
+  box-shadow: none;
+  overflow: visible;
+}
+
+.stage-canvas {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+  border-radius: var(--radius);
+  overflow: hidden;
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  background: #0b1c24;
+}
+
+.network-stage.stage-stack .stage-canvas,
+.network-stage-canvas {
   background: #f7fafc;
 }
 
+.network-stage-bars {
+  flex: 0 0 auto;
+  max-height: min(32vh, 280px);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+  background: rgba(255, 255, 255, 0.96);
+  border: 1px solid var(--line);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  margin-top: 0.75rem;
+  padding-top: 0.35rem;
+}
+
+.network-stage-bars-wrap {
+  flex: 0 0 auto;
+  margin-top: 0.75rem;
+}
+
+.network-stage-bars-header {
+  padding: 0.55rem 0.85rem 0.15rem;
+  border: 1px solid var(--line);
+  border-bottom: 0;
+  border-radius: var(--radius) var(--radius) 0 0;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--shadow);
+}
+
+.network-stage-bars-wrap .network-stage-bars {
+  margin-top: 0;
+  border-top: 0;
+  border-radius: 0 0 var(--radius) var(--radius);
+  max-height: min(30vh, 260px);
+}
+
+.network-stage-bars:empty {
+  display: none;
+  margin-top: 0;
+  border: 0;
+  box-shadow: none;
+}
+
+.stage-detail-panel {
+  flex: 0 0 auto;
+}
+
+.network-stage {
+  background: transparent;
+}
+
+.network-stage-canvas svg,
 .network-stage svg {
   display: block;
   width: 100%;
@@ -655,6 +801,10 @@ button:active {
   background:
     radial-gradient(900px 500px at 50% 20%, rgba(31, 111, 139, 0.12) 0%, transparent 60%),
     white;
+  height: auto;
+  min-height: 0;
+  overflow: visible;
+  padding: 1rem 0;
 }
 
 .share-card {
@@ -679,6 +829,8 @@ button:active {
   margin: 0 auto;
   border-radius: 12px;
   border: 1px solid var(--line);
+  max-width: 100%;
+  height: auto;
 }
 
 .share-url {
@@ -728,6 +880,12 @@ button:active {
   height: 100%;
 }
 
+.stage-canvas #map,
+.stage-canvas #emissions-map {
+  position: absolute;
+  inset: 0;
+}
+
 .stage-badge {
   position: absolute;
   z-index: 5;
@@ -761,6 +919,16 @@ button:active {
   flex-direction: column;
 }
 
+.stage-stack > .hover-card.stage-detail-panel {
+  position: static;
+  right: auto;
+  bottom: auto;
+  width: 100%;
+  max-height: none;
+  margin-top: 0.75rem;
+  backdrop-filter: none;
+}
+
 .hover-card[hidden] {
   display: none;
 }
@@ -792,6 +960,8 @@ button:active {
   margin: 0;
   padding-left: 1.1rem;
   overflow: auto;
+  flex: 1;
+  min-height: 0;
   font-size: 0.88rem;
   line-height: 1.45;
 }
@@ -854,11 +1024,61 @@ button:active {
   max-width: calc(100% - 2rem);
 }
 
+.network-sidebar-scroll,
+.results-wrap,
+.stage-stack > .hover-card.stage-detail-panel,
+.network-stage-bars-wrap .network-stage-bars {
+  touch-action: pan-y;
+}
+
+@media (min-width: 901px) {
+  .stage.stage-stack {
+    height: 100%;
+  }
+
+  #map-stage.stage-stack,
+  #emissions-stage.stage-stack {
+    display: grid;
+    grid-template-columns: 1fr;
+    grid-template-rows: 1fr;
+  }
+
+  #map-stage .stage-canvas,
+  #emissions-stage .stage-canvas {
+    grid-area: 1 / 1;
+  }
+
+  #map-stage > .hover-card.stage-detail-panel,
+  #emissions-stage > .hover-card.stage-detail-panel {
+    grid-area: 1 / 1;
+    align-self: end;
+    justify-self: end;
+    margin: 1rem;
+    margin-top: 0;
+    position: relative;
+    z-index: 6;
+    width: min(360px, calc(100% - 2rem));
+    max-height: min(420px, calc(100% - 2rem));
+    overflow: hidden;
+  }
+
+  .network-stage.stage-stack {
+    display: flex;
+    flex-direction: column;
+  }
+}
+
 @media (max-width: 900px) {
+  html {
+    overflow: auto;
+    height: auto;
+  }
+
   body {
     overflow: auto;
     height: auto;
     min-height: 100dvh;
+    display: block;
   }
 
   .topbar {
@@ -884,49 +1104,84 @@ button:active {
   }
 
   .layout {
-    grid-template-columns: 1fr;
-    grid-template-areas:
-      "main"
-      "sidebar";
-    grid-template-rows: auto auto;
+    display: flex;
+    flex-direction: column;
     overflow: visible;
     min-height: auto;
-    padding: 0 1rem 1rem;
+    padding: 0 1rem 1.25rem;
     gap: 0.85rem;
   }
 
-  .stage {
-    min-height: 42dvh;
-    height: 42dvh;
+  .stage-stack {
+    order: -1;
+    height: auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
   }
 
-  .network-stage {
-    min-height: 46dvh;
-    height: 46dvh;
+  #map-stage.stage-stack,
+  #emissions-stage.stage-stack,
+  .network-stage.stage-stack {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .stage-canvas {
+    height: 42dvh;
+    min-height: 240px;
+    flex: none;
+  }
+
+  .network-stage-canvas {
+    height: 44dvh;
+    min-height: 260px;
+  }
+
+  .stage-stack > .hover-card.stage-detail-panel {
+    max-height: 38dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
+  }
+
+  .network-stage-bars {
+    max-height: none;
+  }
+
+  .network-stage-bars-wrap .network-stage-bars {
+    max-height: none;
+  }
+
+  .network-stage-bars-wrap {
+    margin-top: 0.85rem;
   }
 
   .panel {
     max-height: none;
     min-height: 0;
-    overflow-x: hidden;
-    overflow-y: auto;
-    -webkit-overflow-scrolling: touch;
+    overflow: visible;
+    flex: none;
   }
 
   .entry-form,
   .network-controls,
   .share-controls {
-    position: sticky;
-    top: 0;
-    z-index: 2;
-    background: var(--panel);
+    position: static;
   }
 
   .network-sidebar-scroll,
   .results-wrap {
-    overflow: visible;
+    max-height: 52dvh;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    overscroll-behavior: contain;
     flex: none;
-    max-height: none;
+  }
+
+  .emissions-context,
+  .emissions-headline {
+    flex: none;
   }
 
   .form-actions {
@@ -935,14 +1190,6 @@ button:active {
 
   .form-actions button {
     flex: 1 1 8rem;
-  }
-
-  .hover-card {
-    right: 0.75rem;
-    left: 0.75rem;
-    bottom: 0.75rem;
-    width: auto;
-    max-height: 42dvh;
   }
 
   .network-side-card {
@@ -957,6 +1204,16 @@ button:active {
   .stage-badge {
     font-size: 0.72rem;
     padding: 0.4rem 0.65rem;
+  }
+
+  .share-stage {
+    order: -1;
+    padding: 0.75rem 0 1rem;
+  }
+
+  .share-card {
+    width: min(22rem, 100%);
+    padding: 1.15rem 1rem 1rem;
   }
 }
 

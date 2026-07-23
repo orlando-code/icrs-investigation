@@ -503,11 +503,29 @@ def _build_network_data(
         for location in locations
     }
 
+    individual_talk_count: dict[str, int] = {}
+    affiliation_talk_count: dict[str, int] = {}
     individual_edges: dict[tuple[str, str], int] = {}
     affiliation_edges: dict[tuple[str, str], int] = {}
 
     for _, row in df.iterrows():
         authors = _talk_authors(row, presenter_col=presenter_col)
+        if not authors:
+            continue
+
+        affiliation = row.get(affiliation_col)
+        affiliation_text = "" if pd.isna(affiliation) else str(affiliation).strip()
+
+        for author in authors:
+            individual_talk_count[author] = individual_talk_count.get(author, 0) + 1
+            if affiliation_text and author not in author_affiliations:
+                author_affiliations[author] = affiliation_text
+
+        if affiliation_text:
+            affiliation_talk_count[affiliation_text] = (
+                affiliation_talk_count.get(affiliation_text, 0) + 1
+            )
+
         if len(authors) < 2:
             continue
 
@@ -528,19 +546,9 @@ def _build_network_data(
                 key = tuple(sorted((affiliation_a, affiliation_b)))
                 affiliation_edges[key] = affiliation_edges.get(key, 0) + 1
 
-    individual_degree: dict[str, int] = {}
-    for (author_a, author_b), weight in individual_edges.items():
-        individual_degree[author_a] = individual_degree.get(author_a, 0) + weight
-        individual_degree[author_b] = individual_degree.get(author_b, 0) + weight
-
-    affiliation_degree: dict[str, int] = {}
-    for (affiliation_a, affiliation_b), weight in affiliation_edges.items():
-        affiliation_degree[affiliation_a] = affiliation_degree.get(affiliation_a, 0) + weight
-        affiliation_degree[affiliation_b] = affiliation_degree.get(affiliation_b, 0) + weight
-
     individual_nodes = []
     for author, connections in sorted(
-        individual_degree.items(),
+        individual_talk_count.items(),
         key=lambda item: (-item[1], item[0].casefold()),
     ):
         affiliation = author_affiliations.get(author, "")
@@ -568,7 +576,7 @@ def _build_network_data(
 
     affiliation_nodes = []
     for affiliation, connections in sorted(
-        affiliation_degree.items(),
+        affiliation_talk_count.items(),
         key=lambda item: (-item[1], item[0].casefold()),
     ):
         lat = None

@@ -26,8 +26,12 @@ export function createShareView(siteData, elements) {
     if (elements.urlInput) elements.urlInput.value = url;
     if (!elements.qrCanvas) return;
 
+    const size = Math.min(280, Math.max(200, window.innerWidth - 56));
+    elements.qrCanvas.width = size;
+    elements.qrCanvas.height = size;
+
     await QRCode.toCanvas(elements.qrCanvas, url, {
-      width: 280,
+      width: size,
       margin: 2,
       color: {
         dark: "#14212b",

@@ -11,6 +11,14 @@ import {
 const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 const MAX_ZOOM = 10;
 
+function isMobileLayout() {
+  return window.matchMedia("(max-width: 900px)").matches;
+}
+
+function mapProjection() {
+  return isMobileLayout() ? undefined : { type: "globe" };
+}
+
 export function createMapView(siteData, elements) {
   const locations = siteData.locations;
   const meta = siteData.meta;
@@ -35,9 +43,12 @@ export function createMapView(siteData, elements) {
     container: elements.mapContainer,
     style: MAP_STYLE,
     center: [auckland.lon, auckland.lat],
-    zoom: 1.9,
+    zoom: isMobileLayout() ? 1.35 : 1.9,
+    minZoom: isMobileLayout() ? 0.9 : 0.5,
     maxZoom: MAX_ZOOM,
-    projection: { type: "globe" },
+    projection: mapProjection(),
+    touchPitch: false,
+    cooperativeGestures: isMobileLayout(),
   });
 
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
@@ -101,7 +112,7 @@ export function createMapView(siteData, elements) {
     elements.hoverMeta.textContent = [
       `${location.speaker_count} speaker${location.speaker_count === 1 ? "" : "s"}`,
       `${location.talk_count} talk${location.talk_count === 1 ? "" : "s"}`,
-      `${(location.connection_count || 0).toLocaleString()} co-authorship connection${location.connection_count === 1 ? "" : "s"}`,
+      `${(location.connection_count || 0).toLocaleString()} talk${location.connection_count === 1 ? "" : "s"} on author lists`,
       `${formatDistance(location.distance_km)} from Auckland`,
       location.geocode_level ? `${location.geocode_level} geocode` : null,
     ]
@@ -117,6 +128,12 @@ export function createMapView(siteData, elements) {
         return `<li class="${isMatch ? "speaker-match" : ""}">${escapeHtml(name)}</li>`;
       })
       .join("");
+
+    if (isMobileLayout()) {
+      window.requestAnimationFrame(() => {
+        elements.hoverCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    }
   }
 
   function locationFeatures() {
@@ -369,13 +386,13 @@ export function createMapView(siteData, elements) {
         .range([8, 28])
         .clamp(true);
       const samples = [
-        { label: `${minCount.toLocaleString()} connections`, size: scale(minCount) },
-        { label: `${midCount.toLocaleString()} connections`, size: scale(midCount) },
-        { label: `${maxCount.toLocaleString()} connections`, size: scale(maxCount) },
+        { label: `${minCount.toLocaleString()} talks`, size: scale(minCount) },
+        { label: `${midCount.toLocaleString()} talks`, size: scale(midCount) },
+        { label: `${maxCount.toLocaleString()} talks`, size: scale(maxCount) },
       ];
       elements.legend.innerHTML = `
-        <h3>Point size · co-authorship connections (log scale)</h3>
-        <p>Circle area scales with shared-authorship links for each affiliation.</p>
+        <h3>Point size · talks on author lists (log scale)</h3>
+        <p>Circle area scales with talks where this affiliation appears on the author list.</p>
         ${samples
           .map(
             (sample) => `
@@ -642,6 +659,17 @@ export function createMapView(siteData, elements) {
     setDistanceMode,
     setConnectionsSize,
     getMatchedIds: () => matchedIds,
-    resize: () => map.resize(),
+    resize: () => {
+      map.resize();
+      try {
+        if (isMobileLayout() && map.getProjection()?.type === "globe") {
+          map.setProjection(undefined);
+        } else if (!isMobileLayout() && map.getProjection()?.type !== "globe") {
+          map.setProjection({ type: "globe" });
+        }
+      } catch {
+        /* projection API unavailable */
+      }
+    },
   };
 }

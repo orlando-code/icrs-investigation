@@ -18,9 +18,11 @@ export function createNetworkView(siteData, elements) {
   let labelSelection = null;
   let dragMoved = false;
   const isCoarsePointer = window.matchMedia("(pointer: coarse)").matches;
+  const canvasEl =
+    elements.stage?.querySelector?.(".network-stage-canvas") || elements.stage;
 
-  const width = () => Math.max(elements.stage.clientWidth, 320);
-  const height = () => Math.max(elements.stage.clientHeight, 420);
+  const width = () => Math.max(canvasEl.clientWidth, 320);
+  const height = () => Math.max(canvasEl.clientHeight, 280);
 
   const svg = d3.select(elements.networkSvg);
   const defs = svg.append("defs");
@@ -119,29 +121,29 @@ export function createNetworkView(siteData, elements) {
     const maxCount = Math.max(minCount, d3.max(counts) || 1);
     const midCount = Math.round(Math.sqrt(minCount * maxCount));
     const samples = [
-      { label: `${minCount.toLocaleString()} links`, value: minCount },
-      { label: `${midCount.toLocaleString()} links`, value: midCount },
-      { label: `${maxCount.toLocaleString()} links`, value: maxCount },
+      { label: `${minCount.toLocaleString()} talks`, value: minCount },
+      { label: `${midCount.toLocaleString()} talks`, value: midCount },
+      { label: `${maxCount.toLocaleString()} talks`, value: maxCount },
     ];
 
     const withDistance = nodes.filter((node) => node.distance_km != null);
     let distanceSection = "";
-    if (withDistance.length) {
-      const distances = withDistance.map((node) => node.distance_km);
-      const minDistance = Math.min(...distances);
-      const maxDistance = Math.max(...distances);
-      const midDistance = Math.round((minDistance + maxDistance) / 2);
-      distanceSection = `
-        <h3>Distance from Auckland</h3>
-        <p>Shown in node details for geocoded affiliations.</p>
-        <div class="legend-row"><span class="legend-line"></span><span>${formatDistance(minDistance)} – ${formatDistance(maxDistance)} across network</span></div>
-        <div class="legend-row"><span class="legend-dot legend-dot-small"></span><span>Example: ${formatDistance(midDistance)}</span></div>
-      `;
-    }
+    // if (withDistance.length) {
+    //   const distances = withDistance.map((node) => node.distance_km);
+    //   const minDistance = Math.min(...distances);
+    //   const maxDistance = Math.max(...distances);
+    //   const midDistance = Math.round((minDistance + maxDistance) / 2);
+    //   distanceSection = `
+    //     <h3>Distance from Auckland</h3>
+    //     <p>Shown in node details for geocoded affiliations.</p>
+    //     <div class="legend-row"><span class="legend-line"></span><span>${formatDistance(minDistance)} – ${formatDistance(maxDistance)} across network</span></div>
+    //     <div class="legend-row"><span class="legend-dot legend-dot-small"></span><span>Example: ${formatDistance(midDistance)}</span></div>
+    //   `;
+    // }
 
     elements.legend.innerHTML = `
-      <h3>Node size · co-authorship connections (log scale)</h3>
-      <p>Circle area scales with shared-authorship links in the current view.</p>
+      <h3>Node size · talks on author lists (log scale)</h3>
+      <p>Circle area scales with talks where the person or affiliation appears on the author list.</p>
       ${samples
         .map(
           (sample) => `
@@ -348,7 +350,7 @@ export function createNetworkView(siteData, elements) {
         (node) => `
         <button type="button" class="result-item${node.id === selectedNodeId ? " selected" : ""}${selectedNodeId && neighbors.has(node.id) ? " neighbor" : ""}" data-node-id="${escapeHtml(node.id)}">
           <div class="affiliation">${escapeHtml(node.label)}</div>
-          <div class="meta">${node.connections.toLocaleString()} connections${node.distance_km != null ? ` · ${formatDistance(node.distance_km)} from Auckland` : ""}${node.affiliation ? ` · ${escapeHtml(node.affiliation)}` : ""}</div>
+          <div class="meta">${node.connections.toLocaleString()} talk${node.connections === 1 ? "" : "s"} on author list${node.distance_km != null ? ` · ${formatDistance(node.distance_km)} from Auckland` : ""}${node.affiliation ? ` · ${escapeHtml(node.affiliation)}` : ""}</div>
         </button>`
       )
       .join("");
@@ -468,7 +470,7 @@ export function createNetworkView(siteData, elements) {
     elements.card.hidden = false;
     elements.cardTitle.textContent = node.label;
     const parts = [
-      `${node.connections.toLocaleString()} shared-authorship connection${node.connections === 1 ? "" : "s"}`,
+      `${node.connections.toLocaleString()} talk${node.connections === 1 ? "" : "s"} on author list`,
     ];
     if (node.distance_km != null) {
       parts.push(`${formatDistance(node.distance_km)} from Auckland`);
@@ -544,7 +546,7 @@ export function createNetworkView(siteData, elements) {
       .slice(0, 8)
       .map((node) => ({
         label: node.label,
-        detail: `${node.connections.toLocaleString()} connections${node.distance_km != null ? ` · ${formatDistance(node.distance_km)}` : ""}${node.affiliation ? ` · ${node.affiliation}` : ""}`,
+        detail: `${node.connections.toLocaleString()} talk${node.connections === 1 ? "" : "s"} on author list${node.distance_km != null ? ` · ${formatDistance(node.distance_km)}` : ""}${node.affiliation ? ` · ${node.affiliation}` : ""}`,
         query: node.label,
         nodeId: node.id,
       }));

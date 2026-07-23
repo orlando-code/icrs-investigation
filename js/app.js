@@ -54,7 +54,7 @@ const els = {
   networkSearchBtn: $("network-search-btn"),
   networkClearSearch: $("network-clear-search"),
   networkLegend: $("network-legend"),
-  networkBarChart: $("network-bar-chart"),
+  networkStageBarChart: $("network-stage-bar-chart"),
   networkResults: $("network-results"),
   networkResultsTitle: $("network-results-title"),
   shareQr: $("share-qr"),
@@ -64,6 +64,7 @@ const els = {
   shareCopyBtn: $("share-copy-btn"),
   shareStatus: $("share-status"),
   emissionsHeadline: $("emissions-headline"),
+  emissionsContext: $("emissions-context"),
   emissionsModeBreakdown: $("emissions-mode-breakdown"),
   emissionsLegend: $("emissions-legend"),
   emissionsBarChart: $("emissions-bar-chart"),
@@ -74,6 +75,7 @@ const els = {
   emissionsHoverCard: $("emissions-hover-card"),
   emissionsHoverAffiliation: $("emissions-hover-affiliation"),
   emissionsHoverMeta: $("emissions-hover-meta"),
+  includeNonSpeakingDelegates: $("include-non-speaking-delegates"),
   tabButtons: [...document.querySelectorAll("[data-tab]")],
   networkModeButtons: [...document.querySelectorAll("[data-network-mode]")],
   emissionsModeButtons: [...document.querySelectorAll("[data-emissions-mode]")],
@@ -119,7 +121,7 @@ function renderResults({ searchQuery, matchedIds, selectedId, selectLocation }) 
     btn.classList.toggle("dimmed", searching && !matchedIds.has(location.id));
     btn.innerHTML = `
       <div class="affiliation">${escapeHtml(location.affiliation)}</div>
-      <div class="meta">${location.speaker_count} speaker${location.speaker_count === 1 ? "" : "s"} · ${location.talk_count} talk${location.talk_count === 1 ? "" : "s"} · ${(location.connection_count || 0).toLocaleString()} connections · ${formatDistance(location.distance_km)} from Auckland</div>
+      <div class="meta">${location.speaker_count} speaker${location.speaker_count === 1 ? "" : "s"} · ${location.talk_count} talk${location.talk_count === 1 ? "" : "s"} · ${(location.connection_count || 0).toLocaleString()} on author lists · ${formatDistance(location.distance_km)} from Auckland</div>
     `;
     btn.addEventListener("click", () => selectLocation(location.id));
     els.results.appendChild(btn);
@@ -163,7 +165,7 @@ const networkView = createNetworkView(SITE_DATA, {
   selectionBadge: els.selectionBadge,
   selectionLabel: els.selectionLabel,
   legend: els.networkLegend,
-  barChart: els.networkBarChart,
+  barChart: els.networkStageBarChart,
   results: els.networkResults,
   resultsTitle: els.networkResultsTitle,
   searchInput: els.networkSearch,
@@ -182,6 +184,7 @@ const shareView = createShareView(SITE_DATA, {
 const emissionsView = createEmissionsView(EMISSIONS_DATA, SITE_DATA, {
   mapContainer: els.emissionsMap,
   headline: els.emissionsHeadline,
+  context: els.emissionsContext,
   modeBreakdown: els.emissionsModeBreakdown,
   legend: els.emissionsLegend,
   barChart: els.emissionsBarChart,
@@ -240,6 +243,13 @@ els.emissionsModeButtons.forEach((button) => {
     emissionsView.setRankMode(button.dataset.emissionsMode);
   });
 });
+
+if (els.includeNonSpeakingDelegates) {
+  els.includeNonSpeakingDelegates.disabled = !emissionsView.hasDelegatePool;
+  els.includeNonSpeakingDelegates.addEventListener("change", (event) => {
+    emissionsView.setIncludeNonSpeakers(event.target.checked);
+  });
+}
 
 els.distanceToggle.addEventListener("change", (event) => {
   if (event.target.checked) {
@@ -368,6 +378,7 @@ window.addEventListener("resize", () => {
   if (activeTab === "map") mapView.resize();
   else if (activeTab === "network") networkView.resize();
   else if (activeTab === "emissions") emissionsView.resize();
+  else if (activeTab === "share") shareView.render();
 });
 
 renderStats();

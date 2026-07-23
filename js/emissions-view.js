@@ -10,6 +10,14 @@ const MAP_STYLE = "https://tiles.openfreemap.org/styles/liberty";
 const MAX_ZOOM = 10;
 const regionNames = new Intl.DisplayNames(["en"], { type: "region" });
 
+function isMobileLayout() {
+  return window.matchMedia("(max-width: 900px)").matches;
+}
+
+function mapProjection() {
+  return isMobileLayout() ? undefined : { type: "globe" };
+}
+
 function countryLabel(code) {
   try {
     return regionNames.of(code) || code;
@@ -18,48 +26,102 @@ function countryLabel(code) {
   }
 }
 
-export function createEmissionsView(emissionsData, siteData, elements) {
-  const locations = emissionsData.locations.filter((location) => location.co2e_kg > 0);
-  const allLocations = emissionsData.locations;
-  const headline = emissionsData.meta.headline;
-  const auckland = siteData.meta.auckland;
-  const rankings = emissionsData.rankings || [];
-  const byCountry = emissionsData.by_country || [];
+function formatCount(value) {
+  return Number(value).toLocaleString(undefined, { maximumFractionDigits: 0 });
+}
 
+function normalizeEmissionsData(data) {
+  if (data?.speakers) {
+    return {
+      meta: data.meta || {},
+      speakers: data.speakers,
+      all_delegates: data.all_delegates || data.speakers,
+    };
+  }
+  return {
+    meta: { generated_at: data.meta?.generated_at, delegate_meta: {} },
+    speakers: data,
+    all_delegates: data,
+  };
+}
+
+export function createEmissionsView(rawEmissionsData, siteData, elements) {
+  const normalized = normalizeEmissionsData(rawEmissionsData);
+  const delegateMeta = normalized.meta.delegate_meta || {};
+  const hasDelegatePool =
+    Boolean(delegateMeta.non_speaker_count) &&
+    normalized.all_delegates?.meta?.headline?.attendees_estimated !==
+      normalized.speakers?.meta?.headline?.attendees_estimated;
+
+  let includeNonSpeakers = false;
+  let emissionsData = normalized.speakers;
+  let locations = [];
+  let allLocations = [];
+  let headline = {};
+  let rankings = [];
+  let byCountry = [];
+  let context = {};
+  let positiveCo2e = [];
+  let maxCo2e = 1;
+  let minCo2e = 1;
+  let sizeScale = null;
+  let emissionNorm = null;
+  let displayPositions = new Map();
+
+  const auckland = siteData.meta.auckland;
   let rankMode = "affiliation";
   let selectedId = null;
   let hoveredId = null;
   let mapReady = false;
 
-  const positiveCo2e = locations.map((location) => location.co2e_kg);
-  const maxCo2e = Math.max(...positiveCo2e, 1);
-  const minCo2e = Math.max(1, Math.min(...positiveCo2e));
-
-  const sizeScale = d3
-    .scaleLog()
-    .domain([minCo2e, maxCo2e])
-    .range([7, 30])
-    .clamp(true);
-  const emissionNorm = d3
-    .scaleLog()
-    .domain([minCo2e, maxCo2e])
-    .range([0, 1])
-    .clamp(true);
   const colorScale = (value) =>
     d3.interpolateRgb("#f7dcc8", "#c43c01")(emissionNorm(Math.max(value, minCo2e)));
-
-  const displayPositions = buildDisplayPositions(allLocations);
 
   const map = new maplibregl.Map({
     container: elements.mapContainer,
     style: MAP_STYLE,
     center: [auckland.lon, auckland.lat],
-    zoom: 1.9,
+    zoom: isMobileLayout() ? 1.35 : 1.9,
+    minZoom: isMobileLayout() ? 0.9 : 0.5,
     maxZoom: MAX_ZOOM,
-    projection: { type: "globe" },
+    projection: mapProjection(),
+    touchPitch: false,
+    cooperativeGestures: isMobileLayout(),
   });
 
   map.addControl(new maplibregl.NavigationControl({ visualizePitch: true }), "top-right");
+
+  function attendeeLabel() {
+    return headline.attendee_label || (includeNonSpeakers ? "delegates" : "speakers");
+  }
+
+  function applyPool() {
+    emissionsData = includeNonSpeakers ? normalized.all_delegates : normalized.speakers;
+    allLocations = emissionsData.locations || [];
+    locations = allLocations.filter((location) => location.co2e_kg > 0);
+    headline = emissionsData.meta.headline || {};
+    rankings = emissionsData.rankings || [];
+    byCountry = emissionsData.by_country || [];
+    context = emissionsData.meta.context || {};
+
+    positiveCo2e = locations.map((location) => location.co2e_kg);
+    maxCo2e = Math.max(...positiveCo2e, 1);
+    minCo2e = Math.max(1, Math.min(...positiveCo2e));
+
+    sizeScale = d3
+      .scaleLog()
+      .domain([minCo2e, maxCo2e])
+      .range([7, 30])
+      .clamp(true);
+    emissionNorm = d3
+      .scaleLog()
+      .domain([minCo2e, maxCo2e])
+      .range([0, 1])
+      .clamp(true);
+    displayPositions = buildDisplayPositions(allLocations);
+    selectedId = null;
+    hoveredId = null;
+  }
 
   function locationById(id) {
     return allLocations.find((location) => location.id === id) || null;
@@ -84,15 +146,115 @@ export function createEmissionsView(emissionsData, siteData, elements) {
   function renderHeadline() {
     const low = formatTonnes(headline.co2e_low_kg);
     const high = formatTonnes(headline.co2e_high_kg);
+    const label = attendeeLabel();
+    const delegateNote =
+      includeNonSpeakers && delegateMeta.non_speaker_count
+        ? ` · includes <strong>${formatCount(delegateMeta.non_speaker_count)}</strong> non-speaking delegates from the published list`
+        : "";
     elements.headline.innerHTML = `
       <p class="emissions-kicker">Estimated return travel to Auckland</p>
       <p class="emissions-total">${formatTonnes(headline.co2e_kg)}</p>
       <p class="emissions-range">${low} – ${high}</p>
       <p class="emissions-meta">
-        <strong>${headline.attendees_estimated.toLocaleString()}</strong> speakers with geocoded affiliations ·
-        <strong>${headline.attendees_missing_location.toLocaleString()}</strong> excluded (no location)
+        <strong>${headline.attendees_estimated.toLocaleString()}</strong> ${label} with geocoded affiliations ·
+        <strong>${headline.attendees_missing_location.toLocaleString()}</strong> excluded (no location)${delegateNote}
       </p>
     `;
+  }
+
+  function formatRatioPhrase(ratio) {
+    if (ratio >= 1.05) {
+      const rounded = ratio >= 10 ? Math.round(ratio).toLocaleString() : ratio.toFixed(1);
+      return `<strong>${rounded}×</strong> higher than`;
+    }
+    if (ratio <= 0.95) {
+      return `<strong>${ratio.toFixed(1)}×</strong> (about ${Math.round(ratio * 100)}% of)`;
+    }
+    return `<strong>about the same as</strong>`;
+  }
+
+  function formatNationalTonnes(tonnes) {
+    if (tonnes == null) return "—";
+    return `${Number(tonnes).toLocaleString(undefined, { maximumFractionDigits: 2 })} t/person`;
+  }
+
+  function renderContext() {
+    if (!elements.context) return;
+    const bullets = [];
+    const year = context.national_per_capita_year || 2022;
+    const minN = context.country_avg_min_attendees || 3;
+    const label = attendeeLabel();
+    const travelSource = (context.sources || []).find((item) => item.id === "travel");
+    const treeSource = (context.sources || []).find((item) => item.id === "tree_uptake");
+    const nationalSource = (context.sources || []).find((item) => item.id === "national_per_capita");
+
+    // Helper for [source] snippet if available
+    function sourceLink(source) {
+      return source
+        ? ` [<a href="${escapeHtml(source.url)}" target="_blank" rel="noopener">source</a>]`
+        : "";
+    }
+
+    if (context.tree_years) {
+      const kgPerTree = context.tree_kg_per_year_assumption || 22;
+      bullets.push(
+        `About <strong>${formatCount(context.tree_years)} tree-years</strong> of CO₂ uptake to offset this total (≈${kgPerTree} kg per mature tree per year${sourceLink(treeSource)}).`
+      );
+    }
+
+    if (context.per_attendee_kg) {
+      bullets.push(
+        `Averaged across geocoded ${label}: <strong>${formatEmissions(context.per_attendee_kg, { compact: true })}</strong> estimated return travel per person${sourceLink(travelSource)}.`
+      );
+    }
+
+    const nationalNote = nationalSource
+      ? ` ([<a href="${escapeHtml(nationalSource.url)}" target="_blank" rel="noopener">World Bank ${year}</a>])`
+      : ` (World Bank ${year})`;
+
+    if (context.lowest_national_per_capita) {
+      const row = context.lowest_national_per_capita;
+      bullets.push(
+        `Among countries with ≥${minN} ${label}, <strong>${escapeHtml(countryLabel(row.origin_country))}</strong> has the lowest national per-capita emissions (${formatNationalTonnes(row.national_tonnes_per_capita)}${nationalNote}). ${label.charAt(0).toUpperCase() + label.slice(1)} from ${escapeHtml(countryLabel(row.origin_country))} averaged ${formatRatioPhrase(row.ratio_vs_national_annual)} that annual footprint in return travel alone (${formatEmissions(row.co2e_per_attendee_kg, { compact: true })}/person, n=${row.attendee_count}).`
+      );
+    }
+
+    if (context.highest_national_per_capita) {
+      const row = context.highest_national_per_capita;
+      bullets.push(
+        `<strong>${escapeHtml(countryLabel(row.origin_country))}</strong> has the highest national per-capita emissions among represented countries (${formatNationalTonnes(row.national_tonnes_per_capita)}${nationalNote}). ${label.charAt(0).toUpperCase() + label.slice(1)} from ${escapeHtml(countryLabel(row.origin_country))} averaged ${formatRatioPhrase(row.ratio_vs_national_annual)} that annual footprint (${formatEmissions(row.co2e_per_attendee_kg, { compact: true })}/person, n=${row.attendee_count}).`
+      );
+    }
+
+    if (context.conference_vs_lowest_national && context.conference_vs_highest_national) {
+      const low = context.conference_vs_lowest_national;
+      const high = context.conference_vs_highest_national;
+      bullets.push(
+        `Conference-wide average return travel (${formatEmissions(context.per_attendee_kg, { compact: true })}/person) is ${formatRatioPhrase(low.ratio_vs_national_annual)} ${escapeHtml(countryLabel(low.origin_country))}'s annual per-capita and ${formatRatioPhrase(high.ratio_vs_national_annual)} ${escapeHtml(countryLabel(high.origin_country))}'s annual per-capita.`
+      );
+    }
+
+    for (const row of context.illustrative_per_capita || []) {
+      const labelText =
+        row.role === "illustrative_low"
+          ? `For comparison, ${escapeHtml(countryLabel(row.origin_country))}'s national per-capita is ${formatNationalTonnes(row.national_tonnes_per_capita)}${nationalNote}: the conference average return trip is ${formatRatioPhrase(row.ratio_vs_national_annual)} that annual footprint.`
+          : `${escapeHtml(countryLabel(row.origin_country))}'s national per-capita is ${formatNationalTonnes(row.national_tonnes_per_capita)}${nationalNote}; the conference average return trip is ${formatRatioPhrase(row.ratio_vs_national_annual)} that annual footprint.`;
+      bullets.push(labelText);
+    }
+
+    const sources = context.sources || [];
+    const sourcesHtml = sources.length
+      ? `<div class="emissions-sources"><h3>Sources</h3><ul>${sources
+        .map(
+          (source) =>
+            `<li><a href="${escapeHtml(source.url)}" target="_blank" rel="noopener">${escapeHtml(source.label)}</a>${source.note ? `<span> — ${escapeHtml(source.note)}</span>` : ""}</li>`
+        )
+        .join("")}</ul></div>`
+      : "";
+
+    elements.context.innerHTML = bullets.length
+      ? `<h3>Putting it in context</h3><ul class="emissions-context-list">${bullets.map((item) => `<li>${item}</li>`).join("")}</ul>${sourcesHtml}`
+      : sourcesHtml;
   }
 
   function renderModeBreakdown() {
@@ -177,6 +339,7 @@ export function createEmissionsView(emissionsData, siteData, elements) {
   }
 
   function renderRankings() {
+    const personLabel = attendeeLabel().replace(/s$/, "");
     if (rankMode === "affiliation") {
       elements.resultsTitle.textContent = "Top affiliations by emissions";
       elements.results.innerHTML = rankings
@@ -206,11 +369,20 @@ export function createEmissionsView(emissionsData, siteData, elements) {
     elements.results.innerHTML = byCountry
       .slice(0, 30)
       .map((row, index) => {
+        const perPerson =
+          row.co2e_per_attendee_kg != null
+            ? `${formatEmissions(row.co2e_per_attendee_kg, { compact: true })}/person · `
+            : "";
+        const attendees =
+          row.attendee_count != null
+            ? `${row.attendee_count} ${personLabel}${row.attendee_count === 1 ? "" : "s"} · `
+            : "";
         return `
         <div class="result-item emissions-country-row">
           <div class="affiliation">${index + 1}. ${escapeHtml(countryLabel(row.origin_country))}</div>
           <div class="meta">
-            ${formatEmissions(row.co2e_kg, { compact: true })} ·
+            ${formatEmissions(row.co2e_kg, { compact: true })} total ·
+            ${attendees}${perPerson}
             ${formatEmissions(row.co2e_low_kg, { compact: true })} – ${formatEmissions(row.co2e_high_kg, { compact: true })}
           </div>
         </div>`;
@@ -240,6 +412,12 @@ export function createEmissionsView(emissionsData, siteData, elements) {
       `${formatEmissions(location.co2e_per_speaker_kg, { compact: true })}/person`,
       formatDistance(location.distance_km),
     ].join(" · ");
+
+    if (isMobileLayout()) {
+      window.requestAnimationFrame(() => {
+        elements.hoverCard.scrollIntoView({ behavior: "smooth", block: "nearest" });
+      });
+    }
   }
 
   function locationFeatures() {
@@ -304,8 +482,18 @@ export function createEmissionsView(emissionsData, siteData, elements) {
     renderRankings();
   }
 
+  function setIncludeNonSpeakers(enabled) {
+    if (!hasDelegatePool) return;
+    includeNonSpeakers = Boolean(enabled);
+    applyPool();
+    renderSidebar();
+    upsertMapData();
+    renderHoverCard(null);
+  }
+
   function renderSidebar() {
     renderHeadline();
+    renderContext();
     renderModeBreakdown();
     renderLegend();
     renderBarChart();
@@ -410,12 +598,26 @@ export function createEmissionsView(emissionsData, siteData, elements) {
     upsertMapData();
   });
 
+  applyPool();
   renderSidebar();
 
   return {
     setRankMode,
+    setIncludeNonSpeakers,
+    hasDelegatePool,
     selectLocation,
     renderSidebar,
-    resize: () => map.resize(),
+    resize: () => {
+      map.resize();
+      try {
+        if (isMobileLayout() && map.getProjection()?.type === "globe") {
+          map.setProjection(undefined);
+        } else if (!isMobileLayout() && map.getProjection()?.type !== "globe") {
+          map.setProjection({ type: "globe" });
+        }
+      } catch {
+        /* projection API unavailable */
+      }
+    },
   };
 }

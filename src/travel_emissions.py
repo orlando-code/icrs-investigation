@@ -36,10 +36,36 @@ DEFAULT_TRAVEL_CACHE_PATH = Path("data/travel_emissions_cache.json")
 DEFAULT_OUTPUT_PATH = Path("outputs/travel_emissions_summary.json")
 DEFAULT_EMISSIONS_SITE_PATH = Path("js/emissions-data.js")
 DEFAULT_USER_AGENT = "icrs-investigation/0.1"
-FLIGHT_BUSINESS_MULTIPLIER = 2.9
+TREE_ABSORPTION_KG_PER_YEAR = 22.0
+MIN_COUNTRY_ATTENDEES_FOR_CONTEXT = 3
+MIN_NATIONAL_PER_CAPITA_TONNES = 0.2
+DEFAULT_NATIONAL_PER_CAPITA_PATH = Path("data/national_per_capita_co2.json")
+ILLUSTRATIVE_LOW_PER_CAPITA_COUNTRIES = ("VU", "TZ", "CM", "FJ", "PG")
+ILLUSTRATIVE_HIGH_PER_CAPITA_COUNTRIES = ("US", "AU", "CA", "SA", "AE", "QA")
+EMISSIONS_SOURCES = [
+    {
+        "id": "travel",
+        "label": "Return-trip travel estimates",
+        "url": "https://emissions.dev/docs/api/travel",
+        "note": "emissions.dev Travel API (economy flights; NZ shared car)",
+    },
+    {
+        "id": "national_per_capita",
+        "label": "National per-capita CO₂",
+        "url": "https://data.worldbank.org/indicator/EN.GHG.CO2.PC.CE.AR5",
+        "note": "World Bank EN.GHG.CO2.PC.CE.AR5, 2022, metric tonnes CO₂e per person (excl. LULUCF)",
+    },
+    {
+        "id": "tree_uptake",
+        "label": "Tree CO₂ uptake (~22 kg/yr)",
+        "url": "https://www.epa.gov/energy/greenhouse-gases-equivalencies-calculator-calculations-and-references",
+        "note": "US EPA GHG equivalencies (≈48 lb CO₂ per tree per year)",
+    },
+]
 NZ_CAR_PASSENGERS_CENTRAL = 2
 NZ_CAR_PASSENGERS_LOW = 4
 NZ_CAR_PASSENGERS_HIGH = 1
+FLIGHT_BUSINESS_MULTIPLIER = 2.9
 _CONSOLE = Console()
 _query_count = 0
 
@@ -336,6 +362,9 @@ def load_attendee_legs(
             geo,
             geocode_level=row.get("geocode_level"),
         )
+        country_code = row.get("country_code")
+        if pd.notna(country_code) and str(country_code).strip():
+            origin_country = str(country_code).strip().upper()
         transport_mode = "car" if origin_country == DEFAULT_DESTINATION_COUNTRY else "flight"
         rows.append(
             {
@@ -706,6 +735,8 @@ def estimate_conference_travel(
     show_progress: bool = True,
     refresh_incomplete: bool = False,
     limit: int | None = None,
+    attendee_label: str = "speakers",
+    exclusion_note: str = "Speakers without geocoded affiliations are excluded from totals.",
 ) -> tuple[pd.DataFrame, dict[str, Any]]:
     if legs is None or missing is None:
         legs, missing = load_attendee_legs(
@@ -754,9 +785,130 @@ def estimate_conference_travel(
         total_presenters=talks_geo["presenter"].nunique(),
         unique_routes=len(routes),
         api_queries=api_query_count(),
+        attendee_label=attendee_label,
+        exclusion_note=exclusion_note,
     )
     summary["routes"] = routes.to_dict(orient="records")
     return estimate_df, summary
+
+
+def _load_national_per_capita(path: Path = DEFAULT_NATIONAL_PER_CAPITA_PATH) -> dict[str, Any]:
+    if not path.exists():
+        return {"meta": {}, "countries": {}}
+    return _load_json(path)
+
+
+def _build_emissions_context(estimates: pd.DataFrame, total_co2e_kg: float) -> dict[str, Any]:
+    """Comparisons for the emissions tab (trees, national per-capita multipliers)."""
+    national_data = _load_national_per_capita()
+    national_by_iso2 = national_data.get("countries", {})
+    national_meta = national_data.get("meta", {})
+
+    by_country = (
+        estimates.groupby("origin_country")
+        .agg(
+            attendee_count=("presenter", "count"),
+            co2e_per_attendee_kg=("co2e_kg", "mean"),
+        )
+        .reset_index()
+    )
+    by_country = by_country[by_country["attendee_count"] >= MIN_COUNTRY_ATTENDEES_FOR_CONTEXT].copy()
+    by_country["national_tonnes_per_capita"] = by_country["origin_country"].map(
+        lambda code: national_by_iso2.get(str(code), {}).get("tonnes_co2e_per_capita")
+    )
+    by_country = by_country.dropna(subset=["national_tonnes_per_capita"])
+    by_country = by_country[by_country["national_tonnes_per_capita"] >= MIN_NATIONAL_PER_CAPITA_TONNES]
+    by_country["national_kg_per_capita"] = by_country["national_tonnes_per_capita"] * 1000
+    by_country["ratio_vs_national_annual"] = (
+        by_country["co2e_per_attendee_kg"] / by_country["national_kg_per_capita"]
+    )
+
+    context: dict[str, Any] = {
+        "tree_years": int(round(total_co2e_kg / TREE_ABSORPTION_KG_PER_YEAR)),
+        "tree_kg_per_year_assumption": TREE_ABSORPTION_KG_PER_YEAR,
+        "per_attendee_kg": round(total_co2e_kg / max(len(estimates), 1), 1),
+        "country_avg_min_attendees": MIN_COUNTRY_ATTENDEES_FOR_CONTEXT,
+        "national_per_capita_year": national_meta.get("year", 2022),
+        "sources": EMISSIONS_SOURCES,
+    }
+
+    if not by_country.empty:
+        lowest_pc = by_country.sort_values("national_tonnes_per_capita").iloc[0]
+        highest_pc = by_country.sort_values("national_tonnes_per_capita").iloc[-1]
+        context["lowest_national_per_capita"] = _country_per_capita_comparison_row(lowest_pc)
+        context["highest_national_per_capita"] = _country_per_capita_comparison_row(highest_pc)
+
+        conf_avg_kg = context["per_attendee_kg"]
+        if national_meta:
+            for key, row in (
+                ("conference_vs_lowest_national", lowest_pc),
+                ("conference_vs_highest_national", highest_pc),
+            ):
+                context[key] = {
+                    "origin_country": str(row["origin_country"]),
+                    "national_tonnes_per_capita": round(float(row["national_tonnes_per_capita"]), 3),
+                    "conference_per_attendee_kg": conf_avg_kg,
+                    "ratio_vs_national_annual": round(conf_avg_kg / float(row["national_kg_per_capita"]), 2),
+                }
+
+        present = set(estimates["origin_country"].astype(str))
+        illustrative: list[dict[str, Any]] = []
+        for iso2 in ILLUSTRATIVE_LOW_PER_CAPITA_COUNTRIES:
+            if iso2 in present and iso2 in national_by_iso2:
+                illustrative.append(
+                    _illustrative_per_capita_row(
+                        iso2,
+                        national_by_iso2[iso2],
+                        conf_avg_kg,
+                        role="illustrative_low",
+                    )
+                )
+                break
+        for iso2 in ILLUSTRATIVE_HIGH_PER_CAPITA_COUNTRIES:
+            if iso2 in present and iso2 in national_by_iso2:
+                illustrative.append(
+                    _illustrative_per_capita_row(
+                        iso2,
+                        national_by_iso2[iso2],
+                        conf_avg_kg,
+                        role="illustrative_high",
+                    )
+                )
+                break
+        if illustrative:
+            context["illustrative_per_capita"] = illustrative
+
+    return context
+
+
+def _illustrative_per_capita_row(
+    iso2: str,
+    national_row: dict[str, Any],
+    conference_per_attendee_kg: float,
+    *,
+    role: str,
+) -> dict[str, Any]:
+    tonnes = float(national_row["tonnes_co2e_per_capita"])
+    national_kg = tonnes * 1000
+    return {
+        "role": role,
+        "origin_country": iso2,
+        "national_tonnes_per_capita": round(tonnes, 3),
+        "national_kg_per_capita": round(national_kg, 1),
+        "conference_per_attendee_kg": conference_per_attendee_kg,
+        "ratio_vs_national_annual": round(conference_per_attendee_kg / national_kg, 2),
+    }
+
+
+def _country_per_capita_comparison_row(row: pd.Series) -> dict[str, Any]:
+    return {
+        "origin_country": str(row["origin_country"]),
+        "co2e_per_attendee_kg": round(float(row["co2e_per_attendee_kg"]), 1),
+        "attendee_count": int(row["attendee_count"]),
+        "national_tonnes_per_capita": round(float(row["national_tonnes_per_capita"]), 3),
+        "national_kg_per_capita": round(float(row["national_kg_per_capita"]), 1),
+        "ratio_vs_national_annual": round(float(row["ratio_vs_national_annual"]), 2),
+    }
 
 
 def summarize_travel_emissions(
@@ -766,14 +918,23 @@ def summarize_travel_emissions(
     total_presenters: int,
     unique_routes: int | None = None,
     api_queries: int | None = None,
+    attendee_label: str = "speakers",
+    exclusion_note: str = "Speakers without geocoded affiliations are excluded from totals.",
 ) -> dict[str, Any]:
     country_level = estimates["geocode_level"].eq("country").sum() if "geocode_level" in estimates.columns else 0
     by_country = (
-        estimates.groupby("origin_country")[["co2e_kg", "co2e_low_kg", "co2e_high_kg"]]
-        .sum()
+        estimates.groupby("origin_country")
+        .agg(
+            co2e_kg=("co2e_kg", "sum"),
+            co2e_low_kg=("co2e_low_kg", "sum"),
+            co2e_high_kg=("co2e_high_kg", "sum"),
+            attendee_count=("presenter", "count"),
+            co2e_per_attendee_kg=("co2e_kg", "mean"),
+        )
         .reset_index()
         .sort_values("co2e_kg", ascending=False)
     )
+    by_country["co2e_per_attendee_kg"] = by_country["co2e_per_attendee_kg"].round(1)
     by_affiliation = (
         estimates.groupby("affiliation")[["co2e_kg", "co2e_low_kg", "co2e_high_kg"]]
         .sum()
@@ -806,6 +967,7 @@ def summarize_travel_emissions(
         .to_dict(orient="records"),
         "by_country": by_country.to_dict(orient="records"),
         "by_affiliation": by_affiliation.head(50).to_dict(orient="records"),
+        "context": _build_emissions_context(estimates, float(estimates["co2e_kg"].sum())),
         "uncertainty": {
             "missing_location_presenters": int(missing_count),
             "country_level_origins": int(country_level),
@@ -814,9 +976,10 @@ def summarize_travel_emissions(
             "notes": [
                 "Lower bound uses economy flights and higher car-sharing assumptions.",
                 "Upper bound uses business-class multiplier for flights.",
-                "Speakers without geocoded affiliations are excluded from totals.",
+                exclusion_note,
             ],
         },
+        "attendee_label": attendee_label,
     }
     return summary
 
@@ -846,7 +1009,125 @@ def print_travel_summary(summary: dict[str, Any]) -> None:
     _CONSOLE.print(mode_table)
 
 
+def _build_emissions_locations(
+    estimates: pd.DataFrame,
+    legs: pd.DataFrame,
+) -> list[dict[str, Any]]:
+    leg_cols = legs[
+        ["presenter", "affiliation", "latitude", "longitude"]
+    ].drop_duplicates(subset=["presenter"])
+    merged = estimates.merge(leg_cols, on=["presenter", "affiliation"], how="left")
+    grouped = merged.groupby(["affiliation", "latitude", "longitude"], dropna=False)
+
+    rows: list[dict[str, Any]] = []
+    for index, ((affiliation, lat, lon), group) in enumerate(grouped, start=1):
+        if pd.isna(lat) or pd.isna(lon):
+            continue
+        co2e_kg = float(group["co2e_kg"].sum())
+        co2e_low_kg = float(group["co2e_low_kg"].sum())
+        co2e_high_kg = float(group["co2e_high_kg"].sum())
+        attendees = int(len(group))
+        rows.append(
+            {
+                "id": f"emis-loc-{index:04d}",
+                "affiliation": "" if pd.isna(affiliation) else str(affiliation),
+                "lat": float(lat),
+                "lon": float(lon),
+                "speaker_count": attendees,
+                "travel_attendees": attendees,
+                "co2e_kg": round(co2e_kg, 1),
+                "co2e_low_kg": round(co2e_low_kg, 1),
+                "co2e_high_kg": round(co2e_high_kg, 1),
+                "co2e_per_speaker_kg": round(co2e_kg / max(attendees, 1), 1),
+                "distance_km": None,
+            }
+        )
+    return rows
+
+
+def _build_pool_payload(
+    estimates: pd.DataFrame,
+    summary: dict[str, Any],
+    legs: pd.DataFrame,
+) -> dict[str, Any]:
+    if not summary.get("context"):
+        summary = {
+            **summary,
+            "context": _build_emissions_context(estimates, float(summary["co2e_kg"])),
+        }
+    location_rows = _build_emissions_locations(estimates, legs)
+    rankings = sorted(location_rows, key=lambda row: row["co2e_kg"], reverse=True)
+    return {
+        "meta": {
+            "headline": {
+                "co2e_kg": round(summary["co2e_kg"], 1),
+                "co2e_low_kg": round(summary["co2e_low_kg"], 1),
+                "co2e_high_kg": round(summary["co2e_high_kg"], 1),
+                "co2e_tonnes": round(summary["co2e_tonnes"], 2),
+                "attendees_estimated": summary["attendees_estimated"],
+                "attendees_missing_location": summary["attendees_missing_location"],
+                "attendee_label": summary.get("attendee_label", "speakers"),
+                "unique_routes_queried": summary.get("unique_routes_queried", 0),
+                "api_queries_used": summary.get("api_queries_used", 0),
+            },
+            "assumptions": summary.get("assumptions", {}),
+            "uncertainty": summary.get("uncertainty", {}),
+            "by_transport_mode": summary.get("by_transport_mode", []),
+            "context": summary.get("context", {}),
+        },
+        "locations": location_rows,
+        "rankings": rankings[:30],
+        "by_country": summary.get("by_country", [])[:30],
+    }
+
+
 def export_emissions_site_data(
+    estimates: pd.DataFrame,
+    summary: dict[str, Any],
+    site_locations: list[dict[str, Any]],
+    *,
+    legs: pd.DataFrame | None = None,
+    all_delegates: tuple[pd.DataFrame, dict[str, Any], pd.DataFrame] | None = None,
+    delegate_meta: dict[str, Any] | None = None,
+    save_path: str | Path = DEFAULT_EMISSIONS_SITE_PATH,
+) -> Path:
+    """Export travel emissions for the static emissions tab."""
+    from datetime import UTC, datetime
+
+    if legs is None:
+        legs = estimates[["presenter", "affiliation"]].copy()
+        legs["latitude"] = pd.NA
+        legs["longitude"] = pd.NA
+
+    speakers_pool = _build_pool_payload(estimates, summary, legs)
+    payload: dict[str, Any] = {
+        "meta": {
+            "generated_at": datetime.now(UTC).isoformat(timespec="seconds"),
+            "delegate_meta": delegate_meta or {},
+        },
+        "speakers": speakers_pool,
+    }
+    if all_delegates is not None:
+        delegate_estimates, delegate_summary, delegate_legs = all_delegates
+        payload["all_delegates"] = _build_pool_payload(
+            delegate_estimates,
+            delegate_summary,
+            delegate_legs,
+        )
+    else:
+        payload["all_delegates"] = speakers_pool
+
+    output_path = Path(save_path)
+    output_path.parent.mkdir(parents=True, exist_ok=True)
+    js_body = (
+        "/** Generated by estimate_travel_emissions.py — do not edit by hand. */\n"
+        f"export const EMISSIONS_DATA = {json.dumps(payload, ensure_ascii=True, indent=2)};\n"
+    )
+    output_path.write_text(js_body, encoding="utf-8")
+    return output_path
+
+
+def export_emissions_site_data_legacy(
     estimates: pd.DataFrame,
     summary: dict[str, Any],
     site_locations: list[dict[str, Any]],
@@ -912,6 +1193,7 @@ def export_emissions_site_data(
             "assumptions": summary.get("assumptions", {}),
             "uncertainty": summary.get("uncertainty", {}),
             "by_transport_mode": summary.get("by_transport_mode", []),
+            "context": summary.get("context", {}),
         },
         "locations": location_rows,
         "rankings": rankings[:30],
