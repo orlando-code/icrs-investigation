@@ -416,7 +416,7 @@ export function createMapView(siteData, elements, { delegateLocations = [] } = {
       ];
       elements.legend.innerHTML = `
         <h3>Point size · distance from Auckland</h3>
-        <p>Toggle on: circles and great-circle arcs show shortest-path distance to Auckland.</p>
+        <p>Toggle on: circles and great-circle arcs show shortest-path distance to Auckland (not the actual flight paths). The emissions data is based on the actual flight routes.</p>
         ${samples
           .map(
             (sample) => `
