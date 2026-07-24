@@ -40,6 +40,8 @@ const els = {
   sharePanel: $("share-panel"),
   mapStage: $("map-stage"),
   networkStage: $("network-stage"),
+  networkHintBanner: $("network-hint-banner"),
+  networkHintDismiss: $("network-hint-dismiss"),
   emissionsStage: $("emissions-stage"),
   shareStage: $("share-stage"),
   mapContainer: $("map"),
@@ -222,6 +224,31 @@ const emissionsView = createEmissionsView(EMISSIONS_DATA, SITE_DATA, {
 let activeTab = "map";
 
 const layout = document.querySelector(".layout");
+const NETWORK_HINT_STORAGE_KEY = "icrs-network-hint-dismissed";
+
+function isNetworkHintDismissed() {
+  try {
+    return Boolean(localStorage.getItem(NETWORK_HINT_STORAGE_KEY));
+  } catch {
+    return false;
+  }
+}
+
+function dismissNetworkHint() {
+  if (els.networkHintBanner) {
+    els.networkHintBanner.hidden = true;
+  }
+  try {
+    localStorage.setItem(NETWORK_HINT_STORAGE_KEY, "1");
+  } catch {
+    /* private browsing */
+  }
+}
+
+function showNetworkHintIfNeeded() {
+  if (!els.networkHintBanner || isNetworkHintDismissed()) return;
+  els.networkHintBanner.hidden = false;
+}
 
 function setTab(tab) {
   activeTab = tab;
@@ -242,6 +269,7 @@ function setTab(tab) {
     mapView.resize();
   } else if (tab === "network") {
     requestAnimationFrame(() => networkView.resize());
+    showNetworkHintIfNeeded();
   } else if (tab === "emissions") {
     emissionsView.resize();
   } else if (tab === "share") {
@@ -480,3 +508,19 @@ function initWelcome() {
 }
 
 initWelcome();
+
+function initNetworkHint() {
+  if (!els.networkHintBanner || !els.networkHintDismiss) return;
+
+  els.networkHintDismiss.addEventListener("click", dismissNetworkHint);
+  els.networkHintBanner.addEventListener("click", (event) => {
+    if (event.target === els.networkHintBanner) dismissNetworkHint();
+  });
+  document.addEventListener("keydown", (event) => {
+    if (event.key === "Escape" && els.networkHintBanner && !els.networkHintBanner.hidden) {
+      dismissNetworkHint();
+    }
+  });
+}
+
+initNetworkHint();
