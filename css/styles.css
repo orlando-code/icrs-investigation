@@ -884,8 +884,16 @@ button:active {
     white;
   height: auto;
   min-height: 0;
-  overflow: visible;
-  padding: 1rem 0;
+  overflow: auto;
+  padding: 1rem;
+}
+
+.share-stage-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(16rem, 1fr));
+  gap: 1.25rem;
+  align-items: start;
+  width: min(44rem, 100%);
 }
 
 .share-card {
@@ -896,6 +904,54 @@ button:active {
   box-shadow: var(--shadow);
   background: rgba(255, 255, 255, 0.96);
   max-width: 22rem;
+  width: 100%;
+  justify-self: center;
+}
+
+.share-contact {
+  padding: 1.1rem 1.2rem 1.15rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--line);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: var(--shadow);
+}
+
+.share-contact h3 {
+  margin: 0.2rem 0 0;
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 560;
+  line-height: 1.25;
+}
+
+.share-contact .welcome-lead {
+  margin: 0.55rem 0 0;
+  font-size: 0.88rem;
+}
+
+.share-contact-email {
+  margin: 0.9rem 0 0;
+  font-size: 0.95rem;
+}
+
+.share-contact-email a {
+  color: var(--sea);
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.share-contact-email a:hover {
+  text-decoration: underline;
+}
+
+.share-contact-stage {
+  max-width: 22rem;
+  width: 100%;
+  justify-self: center;
+}
+
+#share-panel .share-contact {
+  margin-top: 0.25rem;
 }
 
 .share-title {
